@@ -206,3 +206,144 @@ CREATE OR REPLACE VIEW view_사원부서 AS SELECT 도시
                                             INNER JOIN 부서
                                             ON 사원.부서번호 = 부서.부서번호
                                             GROUP BY 도시;
+
+/*
+SQL 스토어드 프로그램(STROED PROGRAM)
+데이터베이스에서 실행되는 프로그램으로 일련의 DQL문을 포함하고 있는 데이터 베이스 객체
+주로 프로시저나 함수, 트리거 형태로 사용됨
+
+스토어드 프로그램의 특징
+프로그래밍 언어적 트것ㅇ
+코드 캡슐화와 유지 보수
+재사용성
+성능 향상
+보안
+트랙잭션 관리
+비즈니스 로직 분리
+
+변수 : 값을 저장하고 참조하는 데 사용되는 식별자
+조건문
+IF문 : 조건에 따라 다른 명령을 처리하고자 할 떄 사용, 조건이 여러 ㅓ개일 때에는 ELSE IF로 조건을 추가할 수 있음
+		ELSEIF절은 여러 개 작성이 가능하지만, ELSE는 문장 내에서 한 번만 작성 가능
+*/
+
+#예제 10-1
+#IF문을 사용하여 두 개의 숫자 10과 5의 크기를 비교하는 프로시저를 작성하시오
+DELIMITER $$		#??
+CREATE PROCEDURE proc_if()
+	BEGIN
+		DECLARE x INT;
+		DECLARE Y INT DEFAULT 5;
+		SET x = 10;
+    
+		IF x > y THEN 
+			SELECT 'x는 y보다 큽니다.' AS 결과;
+		ELSE
+			SELECT 'x는 y보다 작거나 같습니다.' AS 결과;
+		END IF;
+	END $$
+DELIMITER;		#ERROR CODE: 1304
+
+#스토어드 프로시저를 실행할 때는 CALL을 사용함
+CALL proc_if();		#실행 안됨
+
+#CASE문 : 주로 복잡한 다중 조건을 처리하기 위해 사용	
+
+#예제 10-2
+#CASE문을 사용하여 숫자 10이 짝수인지 홀수인지를 판별하는  프로시저를 작성하시오
+DELIMITER$$
+CREATE PROCEDURE proc_case()
+	BEGIN
+		DECLARE x INT DEFAULT 10;
+        DECLARE y INT;
+        SET y = 10 mod  2;
+        
+        CASE
+			WHEN  y = 0 THEN
+				SELECT 'x는 짝수입니다.' AS '결과';
+			ELSE
+				SELECT 'x는 홀수입니다.' AS '결과';
+		END CASE;
+	END $$
+DELIMITER;		#ERROR CODE: 1304
+
+#확인
+CALL proc_case()$$
+
+#WHILE : 주어진 주건이 참이 ㄴ동안 반복적으로 코드를 실행하다가, 조건이 거짓이 되면 반복문을  종료함
+#		WHILE문은 반복 시작하기 전에 조건을 평가하기 때문에 조건이 처음부터 거짓이면 코드가 실행되지 않음
+
+#예제 10-3
+#1부터 10까지의 합을 출력하는 프로시저를 WHILE문으로 작성하시오
+DELIMITER $$
+CREATE PROCEDURE proc_while()
+	BEGIN
+		DECLARE x INT DEFAULT 0;
+        DECLARE y INT DEFAULT 0;
+        
+        WHILE x < 10 DO
+			SET x =  x  + 1;
+            SET y = y + x;
+		END WHILE;
+        SELECT x,y;
+	END $$
+DELIMITER ;		#';'붙이면 에러남
+
+#확인
+CALL proc_while();
+
+#LOOP은 : 탈출 조건이 없으면 무한 반복되기 때문에 반복문 내에서 LEAVE문을 사용하여 루프를 종료해야 함
+#		이떄 루프에 레이블명을 지정하고, 지정한 레이블명은 LEAVE문에 기술함
+
+#예제10-4
+#1부터 10까지의 합을 출력하는 프로시저를 LOOP문으로 작성하시오
+DELIMITER $$
+CREATE PROCEDURE proc_loop()
+	BEGIN
+		DECLARE x INT DEFAULT 0;
+        DECLARE y INT DEFAULT 0;
+        
+        loop_sum:LOOP
+        SET x = x  + 1;
+        SET y = y  + x;
+        IF x > 10 THEN
+			LEAVE loop_sum;
+            END IF;
+            SELECT x, y;
+		END LOOP;
+	END $$
+DELIMITER ;
+
+#확인
+CALL proc_loop();
+
+#REPEAT: 조건이 참이 될 떄까지 코드를 실행함
+#		REPEAT문은 반복문 내에서 조건을 비교하기 전에 최소 한 번은 코드가 실행됨
+
+#예제 10-5
+#1부터 10까지의 합을 출력하는 프로시저를 REPEAT문으로 작성하시오
+DELIMITER $$
+CREATE PROCEDURE proc_repeat()
+	BEGIN
+		DECLARE x INT DEFAULT 0;
+		DECLARE y INT DEFAULT 0;
+    
+		REPEAT
+			SET x = x + 1;
+			SET y = y + x;
+		UNTIL x >= 10 END REPEAT;
+		SELECT x, y;
+    END $$
+DELIMITER ;
+	
+#확인
+CALL proc_repeat()
+
+/*
+SQL 스토어드 프로시저(Stored Procedure)
+데이터베이스 객체 중 하나로 데이터베이스에서 수행할 수 있는 이련의 SQL문과 제어문을 저장한 SQL 스토어드 프로그램을 의미함
+SQL 스토어드 프로시저를 사용하면 하나의 요청으로 여러 개의 SQL문을 실행할수 있음
+데이터 검색이나 조작, 업데이트, 삭제 등과 같은 다양한 작업을 수행할 수 있음
+스토어드 프로시저는 시스템 스토어드 프로시저와 사용자 정의 프로시저로 구분 할 수 있음
+*/
+					    
