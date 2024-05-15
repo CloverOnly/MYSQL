@@ -268,7 +268,7 @@ CREATE PROCEDURE proc_case()
 DELIMITER;		#ERROR CODE: 1304
 
 #확인
-CALL proc_case()$$
+CALL proc_case() $$
 
 #WHILE : 주어진 주건이 참이 ㄴ동안 반복적으로 코드를 실행하다가, 조건이 거짓이 되면 반복문을  종료함
 #		WHILE문은 반복 시작하기 전에 조건을 평가하기 때문에 조건이 처음부터 거짓이면 코드가 실행되지 않음
@@ -346,4 +346,258 @@ SQL 스토어드 프로시저를 사용하면 하나의 요청으로 여러 개�
 데이터 검색이나 조작, 업데이트, 삭제 등과 같은 다양한 작업을 수행할 수 있음
 스토어드 프로시저는 시스템 스토어드 프로시저와 사용자 정의 프로시저로 구분 할 수 있음
 */
-					    
+/*
+시스템 스토어드 프로시저
+MYSQL 데이터베이스 시스템에 내장되어 있는 특수한 유형의 저장 프로그램
+백업 , 복원, 성능 최적화, 사용자 관리 등 주로 데이터베이스 시스템의 내부 동작을 제어하고 관리하는데 사용됨
+데이터베이스에 내장되어 있기 때문에 별도로 설치할 필요가 없음
+사용자가 직접 프로시저를 생성할 수도 있는데, 이러한 프로시저를 사용자 정의 프로시저라고 함
+
+사용자 정의 프로시저 
+자주 사용하는 SQL문을 프로시저로 생성하여 저장한 후 필요 시에 호출해서 사용 할 수 있음
+
+사용자 정의 프로시저의 구성 요소
+프로시저 정의 
+매개 변수 : IN 매개변수 OUT 매개변수 INOUT 매개변수
+변수
+SQL문
+제어문 
+*/
+
+#예제 10-6
+#고객 정보와 고객 수를 보이는 프로시저를 작성하시오
+DELIMITER $$
+CREATE PROCEDURE proc_고객정보()
+BEGIN
+	SELECT * FROM 고객;
+    SELECT COUNT(*) AS 고객수 FROM 고객;
+END &&
+DELIMITER ;		#에러
+
+#확인
+CALL proc_고객정보();
+
+#예제 10-7
+#도시를 입력하면 해당 도시의 고객 정보와 고객 수를 보이는 프로시저를 작성하시오
+DELIMITER $$
+CREATE PROCEDURE proc_도시고객정보(IN city VARCHAR(50))
+BEGIN
+	SELECT  * FROM 고객 WHERE 도시 = city;
+    SELECT COUNT(*) AS 고객수 FROM 고객 WHERE 도시 = city;
+END $$
+DELIMITER ;
+
+#확인
+CALL proc_도시고객정보('부산광역시');		#에러
+
+#예제 10-8
+#주문년도와 고객의 도시를 입력하면 해당 년도에 해당 도시의 고객이 주문한 내역에 대하여 주문고객별로 주문건수를 보이는 프로시저를 작성하시오
+DELIMITER $$
+CREATE PROCEDURE proc_주문년도시_고객정보(IN order_year INT,  IN city VARCHAR(50))
+BEGIN
+	SELECT 고객.고객번호
+			,고객회사명
+            ,도시
+            ,COUNT(*) AS 주문건수
+		FROM 고객 JOIN 주문
+        ON 고객.고객번호 = 주문.고객번호
+        WHERE  YEAR(주문일) = order_year
+         AND 도시 = city
+         GROUP  BY 고객.고객번호, 고객회사명;
+END $$
+DELIMITER ;
+
+#확인
+CALL proc_주문년도시_고객정보(2021, '공주시');		#에러
+
+#예제 10-9
+#고객회사명과 추가할 마일리지를 입력하면 해당 고객에 대하여 입력한 마일리지만큼 추가하는 프로시저를 작성하시오
+DELIMITER $$
+CREATE PROCEDURE proc_고객회사명_마일리지추가(IN company VARCHAR(50), IN add_mileage INT)
+BEGIN
+	SELECT 고객번호, 고객회사명, 마일리지 AS 변경전마일리지 FROM 고객 WHERE 고객회사명 = company;
+    UPDATE 고객 SET  마일리지 = 마일리지 + add_mileage WHERE 고객회사명 = company;
+    SELECT 고객번호, 고객회사명, 마일리지 AS 변경후마일리지 FROM 고객 WHERE 고객회사명 = company;
+END $$
+DELIMITER ;
+
+#확인
+CALL proc_고객회사명_마일리지추가('진영무역', 1000);		#에러
+
+#예제 10-10
+#고객회사명을 입력하면 해당 고객의 마일리지를 변경하는 프로시저를 작성하시오. 이때 만일 고객의 마일리지가 전체 고객의 평균마일리지 보다 크다면 100점을 추가하고, 그렇지 않다면 전 고객의 평균마일리지만큼으로 변경하시오
+DELIMITER $$
+CREATE PROCEDURE proc_고객회사명_평균마일리지로변경(IN company VARCHAR(50))
+BEGIN
+	DECLARE 평균마일리지 INT;
+    DECLARE 보유마일리지 INT;
+    SELECT 고객회사명, 마일리지 AS 변경전마일리지 FROM 고객 WHERE 고객회사명 = company;
+    
+    SET 평균마일리지 = (SELECT AVG(마일리지) FROM 고객);
+    SET 보유마일리지 = (SELECT 마일리지 FROM 고객 WHERE 고객회사명 = company);
+    
+    IF(보유마일리지 > 평균마일지) THEN
+		UPDATE 고객
+        SET 마일리지 = 마일리지 + 100
+        WHERE 고객회사명 = company;
+	ELSE
+		UPDATE 고객
+        SET 마일리지 = 평균마일리지
+        WHERE 고객회사명 = company;
+	END IF;
+    
+    SELECT 고객회사명, 마일리지 AS 변경후마일리지 FROM 고객 WHERE 고객회사명 = company;
+END $$
+DELIMITER ;
+
+#확인
+CALL proc_고객회사명_평균마일리지로변경('굿모닝서울');		#에러
+
+#예제 10-11
+#고객회사명을 입력하면 고객의 보유 마일리지에 따라서 등급을 보이는 프로시저를 작성하시오
+#이때 고객의 마일리지가 100,000점 이상이면 '최우수고객회사', 50,000점 이상이면 '우수고객회사', 그 나머지는 '관심고객회사'라고 보이시오
+DELIMITER $$
+CREATE PROCEDURE proc_고객등급(IN company VARCHAR(50), OUT grade VARCHAR(20))
+BEGIN
+	DECLARE 보유마일리지 INT;
+    SELECT 마일리지 INTO 보유마일리지 FROM 고객 WHERE 고객회사명 = company;
+    
+    IF 보유마일리지 > 100000 THEN
+		SET grade = '최우수고객회사';
+	ELSEIF 보유마일리지 >= 50000 THEN
+		SET grade = '우수고객회사';
+	ELSE
+		SET grade = '관심고객회사';
+	END IF;
+END $$
+DELIMITER ;
+
+#확인
+CALL proc_고객등급('그린로더스', @그린로더스등급);
+CALL proc_고객등급('오뚜락', @오뚜락등급);
+SELECT @그린로더스등급, @오뚜락등급;
+
+#예제 10-12
+#인상율과 금액을 입력하면 인상금액을 계산하고, 그 결과를 확인할  수 있는 프로시저를 작성하시오
+DELIMITER $$
+CREATE PROCEDURE proc_인상금액(IN increase_rate INT, INOUT price INT)
+BEGIN
+	SET price = price  * (1 + inCrease_rate / 100);
+END $$
+DELIMITER ;
+
+SET @금액 = 10000;
+CALL proc_인상금액(10, @금액);
+SELECT @금액;
+
+CALL proc_인상금액(10, @금액);
+SELECT @금액;
+
+/*
+SQL 스토어드 함수(STORED FUNCTION)
+데이터베이스에서 사용할 수 있는 함수
+SQL 스토어드 함수는 SQL문의 일부로 호출되며, 함수 내에서 로직을 실행하고 값을 반환할 수 있음
+
+MYSQL의 주요 스토어드 함수의 유형
+내장 함수: MYSQL을 설치하면 자동으로 제공되는 함수
+사용자 정의 함수 : 사용자가 필요에 따라 직접 정의하는 함수
+
+사용자 정의 함수의 구성 요소
+함수 정의
+입력 매개변수
+반환 값
+제어문
+*/
+ 
+ #예제 10-13
+ #수량과 단가를 입력하면 두 수를 곱하여 금액을 반환하는 함수를 생성하시오.
+ DELIMITER $$
+ CREATE FUNCTION func_금액(quantity INT, price INT) RETURNS INT
+ BEGIN
+	DECLARE amount INT;
+    SET amount = quantity * price;
+    RETURN amount;
+END $$
+DELIMITER ;		#에러
+
+SELECT func_금액(100, 4500);		#에러
+SELECT * , func_금액(주문수량, 단가) AS 주문금액 FROM 주문세부;	#에러
+
+/*
+트리거(TRIGGER)
+데이터베이스에서 ㅓ데이터 삽입, 변경  또는 삭제와 같은 특정 이벤트가 발생할 때마다 자동으로 실행되는 작업을 의미함
+INSERT, UPDATE, DELETE와 같은 이벤트가 발생할 때마다 트리거에 정의된 SQL문이 자동 실행됨
+트리거는 복잡한 비즈니스 규칙 구현 및 테이터 검증, 보안, 로깅 등에 사용됨
+트리거를 통해 데이터의 일관성을 유지할 수 잇으며 다양한 작업을 자동화할 수 있음
+
+트리거의 구성 요소
+트리거 정의
+이벤트
+테이블
+타이밍
+본문
+*/
+
+#예제 10-14
+#제품로그 테이블을 생성하시오. 그리고 제품을 추가할 때마다 로그 테이블에 정보를 남기는 트리거를 작성하시오.
+CREATE TABLE 제품로그(
+					로그번호 INT AUTO_INCREMENT PRIMARY KEY
+                    ,처리 VARCHAR(10)
+                    ,내용 VARCHAR(100)
+                    ,처리일 TIMESTAMP DEFAULT CURRENT_TIMESTAMP);		#에러
+                    
+DELIMITER $$
+CREATE TRIGGER trigger_제품추가로그
+AFTER INSERT ON 제품
+FOR EACH ROW
+BEGIN
+	INSERT INTO 제품로그(처리, 내용)
+		VALUES('INSERT', CONCAT('제품번호:', NEW.제품번호, '제품명:', NEW.제품명));
+END $$
+DELIMITER ;
+
+#트리거 동작 여부는 제품 테이블에 레코드를 추가하고 제품로그 테이블을 검색하여 확인함
+INSERT INTO 제품(제품번호, 제품명, 단가, 재고)
+	VALUES(99, '레몬캔디', 2000, 10); 	#에러
+    
+SELECT * FROM 제품 WHERE 제품번호 = 99;
+
+SELECT * FROM 제품로그;	#에러
+
+#예제 10-15
+#제품 테이블에서 단가나 재고가 변경되면 변경된 사항을 제품로그 테이블에 저장하는 트리거를 생성하시오.
+DELIMITER $$
+CREATE TRIGGER trigger_제품변경로그
+AFTER UPDATE ON 제품
+FOR EACH ROW
+BEGIN
+	IF(NEW.단가 <> OLD.단가) THEN
+		INSERT INTO 제품로그(처리, 내용) VALUES('UPDATE', CONCAT('제품번호:', OLD.제품번호, '단가:', OLD.단가, '->'. NEW.단가));
+    END IF;
+    
+    IF(NEW.재고 <> OLD.재고) THEN
+		INSERT INTO 제품로그(처리, 내용) VALUES('UPDATE', CONCAT('제품번호:', OLD.제품번호, '재고:', OLD.재고, '->', NEW.재고));
+    END IF;
+END $$
+DELIMITER ;		#에러
+
+#트리거 동작 여부는 제품 테이블에서 단가나 재고 값을 변경한 후, 제품로그 테이블을 확인함
+UPDATE 제품 SET 단가 =  2500 WHERE 제품번호 = 99;
+SELECT * FROM 제품로그;	#에러
+
+#예제 10-16
+#제품 테이블에서 제품 정보를 삭제하면 삭제된 레코드의 정보를 제품로그 테이블에 저장하는 트리거를 생성하시오
+DELIMITER $$
+CREATE TRIGGER trigger_제품삭제로그
+AFTER DELETE ON 제품
+FOR EACH ROW 
+BEGIN
+	INSERT INTO 제품로그(처리, 내용) VALUES ('DELETE', CONCAT('제품번호:', OLD.제품번호, '제품명:', OLD.제품명));
+END $$
+DELIMITER ;
+
+#트리거 동작 여부는 제품 테이블에서 레코드를 삭제한 후, 제품로그 테이블을 확인함
+DELETE FROM 제품 WHERE 제품번호 = 99;
+SELECT * FROM 제품로그;		#에러
+    
+    				    
